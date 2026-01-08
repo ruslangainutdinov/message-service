@@ -1,0 +1,46 @@
+version: "3.4"
+services:
+  # PostgreSQL DB used by message service
+  postgres:
+    image: postgres:18.1
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "5432:5432"
+    networks:
+      - common
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: db
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/
+  message-service:
+    image: com.ruslangainutdinov/message-service:latest
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1000M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: db
+    networks:
+      - common
+    depends_on:
+      - "postgres"
+#----------------------------------------------------------
+networks:
+  common:
+
+volumes:
+  postgres_data:

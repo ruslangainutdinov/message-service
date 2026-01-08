@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-init-job
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init-postgres
+          image: postgres:18
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+          command: ["sh", "-c"]
+          args:
+            - |
+              psql -h postgres \
+                   -U "$POSTGRES_USER" \
+                   -d "$POSTGRES_DB" \
+                   -f /init-scripts/init.sql
+          volumeMounts:
+            - name: init-sql
+              mountPath: /init-scripts
+              readOnly: true
+      volumes:
+        - name: init-sql
+          configMap:
+            name: postgres-init
